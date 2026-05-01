@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Heart Disease Analytics Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=Inter:wght@300;400;500;600&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#060c18;--surface:#0d1626;--surface2:#111e33;--surface3:#162040;
+  --border:rgba(255,255,255,0.07);--border2:rgba(255,255,255,0.12);
+  --text:#e8eeff;--muted:#6b7fa8;--muted2:#8fa0c0;
+  --red:#f05c5c;--blue:#4d9ef6;--green:#3ecf8e;--amber:#f5a623;--purple:#a855f7;--pink:#f472b6;
+  --red-bg:rgba(240,92,92,0.1);--blue-bg:rgba(77,158,246,0.1);
+  --green-bg:rgba(62,207,142,0.1);--amber-bg:rgba(245,166,35,0.1);--purple-bg:rgba(168,85,247,0.1);
+  --radius:12px;--radius-lg:16px;
+  --font:'Inter',sans-serif;--serif:'Syne',sans-serif;
+}
+body{font-family:var(--font);background:var(--bg);color:var(--text);min-height:100vh;font-size:14px;line-height:1.6;overflow-x:hidden}
+code{font-family:monospace;background:rgba(255,255,255,0.08);padding:2px 7px;border-radius:5px;font-size:12px;color:var(--blue)}
+.header{background:linear-gradient(135deg,#070e1f 0%,#0f0a1e 100%);border-bottom:1px solid var(--border);padding:20px 36px;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;position:sticky;top:0;z-index:100;backdrop-filter:blur(10px)}
+.hbrand{display:flex;align-items:center;gap:14px}
+.logo{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,#f05c5c,#a855f7);display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0}
+.hbrand h1{font-family:var(--serif);font-size:19px;font-weight:600;color:var(--text);letter-spacing:-.3px}
+.hbrand p{font-size:11px;color:var(--muted);margin-top:1px}
+.hright{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.live{display:flex;align-items:center;gap:7px;background:rgba(62,207,142,0.1);border:1px solid rgba(62,207,142,0.25);border-radius:20px;padding:5px 14px;font-size:11px;color:var(--green);font-weight:500}
+.dot{width:6px;height:6px;border-radius:50%;background:var(--green);animation:blink 2s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+.ebtn{display:flex;align-items:center;gap:6px;padding:7px 14px;border-radius:8px;background:var(--surface2);border:1px solid var(--border2);color:var(--muted2);font-size:12px;font-weight:500;cursor:pointer;font-family:var(--font);transition:all .2s}
+.ebtn:hover{background:var(--surface3);color:var(--text)}
+.tab-bar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 36px;display:flex;gap:0;overflow-x:auto;scrollbar-width:none}
+.tab-bar::-webkit-scrollbar{display:none}
+.tab{padding:13px 20px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;white-space:nowrap;font-family:var(--font)}
+.tab.active{color:var(--blue);border-color:var(--blue)}
+.tab:hover:not(.active){color:var(--text)}
+.upload-wrap{padding:40px;display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:calc(100vh - 125px)}
+.upload-card{width:100%;max-width:600px;background:var(--surface);border-radius:var(--radius-lg);border:1px solid var(--border);overflow:hidden}
+.upload-inner{padding:44px 36px;text-align:center}
+.uzone{border:2px dashed rgba(77,158,246,0.35);border-radius:12px;padding:36px 20px;cursor:pointer;position:relative;transition:all .25s;background:rgba(77,158,246,0.03)}
+.uzone:hover,.uzone.drag{border-color:var(--blue);background:rgba(77,158,246,0.07)}
+.uzone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%}
+.up-icon{width:56px;height:56px;margin:0 auto 16px;background:rgba(77,158,246,0.12);border-radius:14px;display:flex;align-items:center;justify-content:center}
+.up-icon svg{width:26px;height:26px;stroke:var(--blue);fill:none;stroke-width:1.7}
+.uzone h3{font-family:var(--serif);font-size:17px;font-weight:600;margin-bottom:7px}
+.uzone p{color:var(--muted);font-size:13px;line-height:1.7}
+.uactions{display:flex;gap:10px;justify-content:center;margin-top:18px;flex-wrap:wrap}
+.btn-p{padding:9px 22px;background:var(--blue);color:#fff;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:none;font-family:var(--font);transition:opacity .2s}
+.btn-p:hover{opacity:.85}
+.btn-g{padding:9px 22px;background:transparent;color:var(--muted2);border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;border:1px solid var(--border2);font-family:var(--font);transition:all .2s}
+.btn-g:hover{background:var(--surface2);color:var(--text)}
+.fmt{margin-top:22px;padding:14px 16px;background:var(--surface2);border-radius:8px;font-size:12px;color:var(--muted);text-align:left;line-height:1.9}
+.fmt strong{color:var(--muted2)}
+.dash{display:none;padding:26px 36px 48px}
+.dash.v{display:block}
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(145px,1fr));gap:13px;margin-bottom:26px}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:17px 18px;position:relative;overflow:hidden;transition:transform .2s,border-color .2s}
+.kpi:hover{transform:translateY(-2px);border-color:var(--border2)}
+.kpi-top{position:absolute;top:0;left:0;right:0;height:3px;border-radius:3px 3px 0 0}
+.kpi-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:9px}
+.kpi-val{font-family:var(--serif);font-size:28px;font-weight:700;line-height:1;margin-bottom:4px}
+.kpi-sub{font-size:11px;color:var(--muted)}
+.controls{display:flex;align-items:center;gap:9px;flex-wrap:wrap;margin-bottom:22px}
+.clbl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
+.chip{padding:5px 13px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--muted);font-family:var(--font);transition:all .2s;white-space:nowrap}
+.chip.active{background:var(--blue);color:#fff;border-color:var(--blue)}
+.chip:hover:not(.active){background:var(--surface2);color:var(--text)}
+.spacer{flex:1}
+.sbox{padding:7px 13px;border-radius:8px;background:var(--surface);border:1px solid var(--border);color:var(--text);font-size:12px;font-family:var(--font);width:170px;outline:none}
+.sbox::placeholder{color:var(--muted)}
+.sbox:focus{border-color:var(--blue)}
+.r2{display:grid;grid-template-columns:1fr 1fr;gap:17px;margin-bottom:17px}
+.r3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:17px;margin-bottom:17px}
+.rf{margin-bottom:17px}
+@media(max-width:900px){.r2,.r3{grid-template-columns:1fr}.header,.tab-bar,.dash,.upload-wrap{padding-left:18px;padding-right:18px}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px;position:relative}
+.card-t{font-family:var(--serif);font-size:14px;font-weight:600;color:var(--text);margin-bottom:3px}
+.card-d{font-size:11px;color:var(--muted);line-height:1.6;margin-bottom:14px}
+.cw{position:relative;width:100%}
+.leg{display:flex;flex-wrap:wrap;gap:11px;margin-bottom:11px}
+.li{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted)}
+.lsq{width:9px;height:9px;border-radius:2px;flex-shrink:0}
+.lci{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.pred-grid{display:grid;grid-template-columns:1fr 1fr;gap:17px;margin-bottom:17px}
+@media(max-width:680px){.pred-grid{grid-template-columns:1fr}}
+.pform{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:22px}
+.pform h3{font-family:var(--serif);font-size:15px;font-weight:600;margin-bottom:5px}
+.pform>p{font-size:12px;color:var(--muted);margin-bottom:18px}
+.frow{margin-bottom:13px}
+.frow label{display:block;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:5px}
+.frow input,.frow select{width:100%;padding:9px 11px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px;font-family:var(--font);outline:none;transition:border-color .2s}
+.frow input:focus,.frow select:focus{border-color:var(--blue)}
+.frow select option{background:var(--surface2)}
+.pbtn{width:100%;padding:10px;background:linear-gradient(135deg,var(--blue),var(--purple));color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--font);margin-top:7px;transition:opacity .2s}
+.pbtn:hover{opacity:.88}
+.pres{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:22px;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;min-height:300px}
+.rfl{margin-top:14px;width:100%;text-align:left}
+.rfi{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--border);font-size:12px;color:var(--muted)}
+.rfi:last-child{border:none}
+.rfd{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.ab{background:linear-gradient(135deg,#0a1228,#0f0a22);border:1px solid var(--border);border-radius:var(--radius-lg);padding:26px;margin-bottom:17px}
+.ab h2{font-family:var(--serif);font-size:19px;font-weight:600;margin-bottom:5px}
+.ab>p{font-size:12px;color:var(--muted);margin-bottom:20px}
+.agrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:15px}
+.ac{background:rgba(255,255,255,0.03);border:1px solid var(--border);border-radius:10px;padding:17px}
+.ac h4{font-size:11px;font-weight:600;color:var(--text);margin-bottom:11px;display:flex;align-items:center;gap:7px;text-transform:uppercase;letter-spacing:.06em}
+.aci{width:22px;height:22px;border-radius:6px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.ac ul{list-style:none}
+.ac ul li{font-size:12px;color:var(--muted);padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.ac ul li:last-child{border:none}
+.ac ul li span{color:var(--text);font-weight:500;flex-shrink:0}
+.rbr{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:11px;color:var(--muted)}
+.rbl{min-width:36px}
+.rbt{flex:1;height:5px;background:rgba(255,255,255,0.07);border-radius:3px;overflow:hidden}
+.rbf{height:100%;border-radius:3px;transition:width .9s ease}
+.rbv{min-width:30px;text-align:right;color:var(--text);font-weight:600;font-size:11px}
+.irow{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:13px;margin-bottom:17px}
+.ic{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;border-left:3px solid}
+.ic.r{border-left-color:var(--red)}.ic.b{border-left-color:var(--blue)}.ic.g{border-left-color:var(--green)}.ic.a{border-left-color:var(--amber)}
+.ic strong{display:block;font-size:13px;font-weight:600;color:var(--text);margin-bottom:4px}
+.ic p{font-size:12px;color:var(--muted);line-height:1.7}
+.tcard{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);overflow:hidden;margin-bottom:17px}
+.thead2{padding:16px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.thead2 h3{font-family:var(--serif);font-size:14px;font-weight:600}
+.thead2 p{font-size:11px;color:var(--muted)}
+.twrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{background:var(--surface2);color:var(--muted);font-weight:500;padding:10px 14px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.08em;border-bottom:1px solid var(--border);white-space:nowrap}
+thead th.sort{cursor:pointer}
+thead th.sort:hover{color:var(--text)}
+tbody td{padding:9px 14px;border-bottom:1px solid rgba(255,255,255,0.04);color:var(--text);white-space:nowrap}
+tbody tr:last-child td{border:none}
+tbody tr:hover td{background:rgba(255,255,255,0.025)}
+.badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:11px;font-weight:600}
+.badge.pos{background:rgba(240,92,92,0.15);color:var(--red)}.badge.neg{background:rgba(62,207,142,0.15);color:var(--green)}
+.badge.m{background:rgba(77,158,246,0.12);color:var(--blue)}.badge.f{background:rgba(244,114,182,0.12);color:var(--pink)}
+.tpag{padding:11px 16px;display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--border);font-size:12px;color:var(--muted)}
+.tpbts{display:flex;gap:6px}
+.tpb{padding:5px 11px;border:1px solid var(--border);background:transparent;color:var(--muted);border-radius:6px;font-size:11px;cursor:pointer;font-family:var(--font);transition:all .2s}
+.tpb:hover:not(:disabled){background:var(--surface2);color:var(--text)}
+.tpb:disabled{opacity:.35;cursor:not-allowed}
+.stat-t{width:100%;border-collapse:collapse;font-size:12px}
+.stat-t th{color:var(--muted);font-weight:500;padding:8px 11px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.07em;border-bottom:1px solid var(--border)}
+.stat-t td{padding:8px 11px;border-bottom:1px solid rgba(255,255,255,0.04);color:var(--text)}
+.stat-t tr:last-child td{border:none}
+.corr-wrap{overflow-x:auto;margin-top:10px}
+.corr-g{display:grid;text-align:center;font-size:11px}
+.chdr{padding:8px 4px;color:var(--muted);font-weight:500;border-bottom:1px solid var(--border)}
+.ccell{padding:9px 3px;border-bottom:1px solid rgba(255,255,255,0.04);font-weight:600;font-size:11px}
+.crow{text-align:left;padding:9px 8px 9px 0;color:var(--muted);font-weight:500;border-bottom:1px solid rgba(255,255,255,0.04);font-size:11px}
+.footer{border-top:1px solid var(--border);padding:16px 36px;display:flex;align-items:center;justify-content:space-between;font-size:11px;color:var(--muted);flex-wrap:wrap;gap:8px}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="hbrand">
+    <div class="logo">♥</div>
+    <div>
+      <h1>CardioAnalytics Dashboard</h1>
+      <p>Heart Disease Clinical Dataset — 5 Advanced Visuals &amp; Deep Analysis</p>
+    </div>
+  </div>
+  <div class="hright">
+    <div class="live"><div class="dot"></div><span id="hdr-st">No data loaded</span></div>
+    <button class="ebtn" onclick="exportCSV()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      Export CSV
+    </button>
+    <button class="ebtn" onclick="window.print()">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+      Print
+    </button>
+  </div>
+</div>
+
+<div class="tab-bar">
+  <div class="tab active" onclick="showTab('overview',this)">Overview &amp; Charts</div>
+  <div class="tab" onclick="showTab('adv',this)">Advanced Visuals</div>
+  <div class="tab" onclick="showTab('pred',this)">Risk Predictor</div>
+  <div class="tab" onclick="showTab('corr',this)">Correlation &amp; Stats</div>
+  <div class="tab" onclick="showTab('data',this)">Patient Data</div>
+</div>
+
+<!-- UPLOAD -->
+<div class="upload-wrap" id="upSec">
+  <div class="upload-card">
+    <div class="upload-inner">
+      <div class="uzone" id="dropZone">
+        <input type="file" id="fileInput" accept=".xlsx,.xls,.csv">
+        <div class="up-icon">
+          <svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        </div>
+        <h3>Upload your heart disease dataset</h3>
+        <p>Drag &amp; drop Excel (.xlsx/.xls) or CSV, or click to browse.<br>All processing happens locally in your browser.</p>
+        <div class="uactions" style="pointer-events:none">
+          <button class="btn-p" style="pointer-events:auto" onclick="event.stopPropagation();document.getElementById('fileInput').click()">Choose File</button>
+          <button class="btn-g" style="pointer-events:auto" onclick="event.stopPropagation();loadSample()">Try Sample Data (303 patients)</button>
+        </div>
+      </div>
+      <div class="fmt">
+        <strong>Required columns (case-insensitive):</strong>&nbsp;
+        <code>age</code> age in years &nbsp;|&nbsp;
+        <code>sex</code> 0=Female, 1=Male &nbsp;|&nbsp;
+        <code>cp</code> chest pain 0–3<br>
+        <code>trestbps</code> resting BP mmHg &nbsp;|&nbsp;
+        <code>chol</code> cholesterol mg/dL &nbsp;|&nbsp;
+        <code>target</code> 1=Disease, 0=Healthy
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div class="dash" id="mainDash">
+
+<!-- ══ TAB: OVERVIEW ══ -->
+<div id="tab-overview">
+  <div class="kpi-row">
+    <div class="kpi"><div class="kpi-top" style="background:var(--red)"></div><div class="kpi-lbl">Total Patients</div><div class="kpi-val" id="k0" style="color:var(--red)">—</div><div class="kpi-sub">Records loaded</div></div>
+    <div class="kpi"><div class="kpi-top" style="background:var(--blue)"></div><div class="kpi-lbl">Prevalence</div><div class="kpi-val" id="k1" style="color:var(--blue)">—</div><div class="kpi-sub">Heart disease rate</div></div>
+    <div class="kpi"><div class="kpi-top" style="background:var(--amber)"></div><div class="kpi-lbl">Mean Age</div><div class="kpi-val" id="k2" style="color:var(--amber)">—</div><div class="kpi-sub">Years (cohort)</div></div>
+    <div class="kpi"><div class="kpi-top" style="background:var(--green)"></div><div class="kpi-lbl">Avg Cholesterol</div><div class="kpi-val" id="k3" style="color:var(--green)">—</div><div class="kpi-sub">mg/dL mean</div></div>
+    <div class="kpi"><div class="kpi-top" style="background:var(--purple)"></div><div class="kpi-lbl">Avg BP</div><div class="kpi-val" id="k4" style="color:var(--purple)">—</div><div class="kpi-sub">mmHg resting</div></div>
+    <div class="kpi"><div class="kpi-top" style="background:var(--pink)"></div><div class="kpi-lbl">Male / Female</div><div class="kpi-val" id="k5" style="color:var(--pink);font-size:20px;padding-top:5px">— / —</div><div class="kpi-sub">Sex split</div></div>
+  </div>
+
+  <div class="controls">
+    <span class="clbl">Filter</span>
+    <button class="chip active" onclick="setFilter('all',this)">All Patients</button>
+    <button class="chip" onclick="setFilter('dis',this)">Disease +</button>
+    <button class="chip" onclick="setFilter('nd',this)">Healthy</button>
+    <button class="chip" onclick="setFilter('male',this)">Male</button>
+    <button class="chip" onclick="setFilter('female',this)">Female</button>
+    <button class="chip" onclick="setFilter('age60',this)">Age ≥60</button>
+    <button class="chip" onclick="setFilter('hichol',this)">Chol ≥240</button>
+    <button class="chip" onclick="setFilter('hibp',this)">Stage 2 BP</button>
+  </div>
+
+  <!-- CHART 1: Age Distribution -->
+  <div class="r2">
+    <div class="card">
+      <div class="card-t">Chart 1 — Age Distribution by Outcome</div>
+      <div class="card-d">Histogram by decade. Compares disease+ vs healthy patient counts across age bands. Reveals which age groups carry the highest disease burden.</div>
+      <div class="leg"><div class="li"><div class="lsq" style="background:var(--red)"></div>Heart Disease+</div><div class="li"><div class="lsq" style="background:var(--green)"></div>Healthy</div></div>
+      <div class="cw" style="height:250px"><canvas id="c-age" role="img" aria-label="Age distribution by disease outcome"></canvas></div>
+    </div>
+
+    <!-- CHART 2: Chest Pain Type -->
+    <div class="card">
+      <div class="card-t">Chart 2 — Chest Pain Type vs Disease Rate</div>
+      <div class="card-d">Grouped bars by cp type (0–3). Shows disease+ and disease− counts per pain category. Asymptomatic (cp=3) often shows paradoxical high-risk association.</div>
+      <div class="leg"><div class="li"><div class="lsq" style="background:var(--red)"></div>Disease+</div><div class="li"><div class="lsq" style="background:var(--blue)"></div>Disease−</div></div>
+      <div class="cw" style="height:250px"><canvas id="c-cp" role="img" aria-label="Chest pain type by disease outcome"></canvas></div>
+    </div>
+  </div>
+
+  <div class="r3">
+    <!-- CHART 3: Sex Donut -->
+    <div class="card">
+      <div class="card-t">Chart 3 — Sex vs Disease Split</div>
+      <div class="card-d">Doughnut chart showing male/female disease breakdown. Reveals sex-based disease incidence differences.</div>
+      <div class="cw" style="height:210px"><canvas id="c-sex" role="img" aria-label="Sex and disease split donut chart"></canvas></div>
+      <div id="sex-st" style="margin-top:11px;font-size:11px;color:var(--muted);line-height:1.9"></div>
+    </div>
+
+    <!-- CHART 4: BP Bands Dual Axis -->
+    <div class="card">
+      <div class="card-t">Chart 4 — Blood Pressure Risk Bands</div>
+      <div class="card-d">Clinical BP categories (Normal/Elevated/Stage 1/Stage 2). Bars = patient count, line = disease rate %. Dual-axis layout for clear comparison.</div>
+      <div class="leg"><div class="li"><div class="lsq" style="background:var(--green)"></div>Count</div><div class="li"><div class="lsq" style="background:rgba(255,255,255,0.5)"></div>Disease %</div></div>
+      <div class="cw" style="height:210px"><canvas id="c-bp" role="img" aria-label="Blood pressure risk bands dual axis chart"></canvas></div>
+    </div>
+
+    <!-- CHART 5: Cholesterol Horizontal -->
+    <div class="card">
+      <div class="card-t">Chart 5 — Cholesterol Distribution</div>
+      <div class="card-d">Horizontal bars by cholesterol quintile (&lt;200 to &gt;260 mg/dL). Compares disease+ vs disease− patient counts. Identifies lipid-risk thresholds.</div>
+      <div class="leg"><div class="li"><div class="lsq" style="background:var(--red)"></div>Disease+</div><div class="li"><div class="lsq" style="background:var(--purple)"></div>Disease−</div></div>
+      <div class="cw" style="height:210px"><canvas id="c-chol" role="img" aria-label="Cholesterol distribution horizontal chart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- BUBBLE SCATTER -->
+  <div class="card rf">
+    <div class="card-t">Advanced Visual — Age × Cholesterol × BP Bubble Plot</div>
+    <div class="card-d">Each bubble = one patient. X-axis = Age, Y-axis = Cholesterol, bubble radius ∝ Resting Blood Pressure. Red = Disease+, Green = Healthy. Reveals multivariate risk clusters.</div>
+    <div class="leg"><div class="li"><div class="lci" style="background:rgba(240,92,92,0.65)"></div>Disease+</div><div class="li"><div class="lci" style="background:rgba(62,207,142,0.55)"></div>Healthy</div><div class="li" style="font-size:10px;color:var(--muted)">◉ size ∝ Blood Pressure</div></div>
+    <div class="cw" style="height:340px"><canvas id="c-scatter" role="img" aria-label="Bubble scatter plot age cholesterol blood pressure"></canvas></div>
+  </div>
+
+  <!-- INSIGHTS -->
+  <div class="irow">
+    <div class="ic r"><strong>Age Risk Gap</strong><p id="ins-age">Upload data to see insight.</p></div>
+    <div class="ic b"><strong>Cholesterol Signal</strong><p id="ins-chol">Upload data to see insight.</p></div>
+    <div class="ic g"><strong>Blood Pressure Bands</strong><p id="ins-bp">Upload data to see insight.</p></div>
+    <div class="ic a"><strong>Chest Pain Pattern</strong><p id="ins-cp">Upload data to see insight.</p></div>
+  </div>
+</div>
+
+<!-- ══ TAB: ADVANCED VISUALS ══ -->
+<div id="tab-adv" style="display:none">
+  <div class="r2">
+    <div class="card">
+      <div class="card-t">Radar — Normalized Risk Profile</div>
+      <div class="card-d">Multi-dimensional risk comparison between disease+ and healthy cohorts. Axes normalized 0–100 from dataset min/max. Highlights which variables diverge most.</div>
+      <div class="leg"><div class="li"><div class="lci" style="background:rgba(240,92,92,0.7)"></div>Disease+</div><div class="li"><div class="lci" style="background:rgba(77,158,246,0.7)"></div>Healthy</div></div>
+      <div class="cw" style="height:300px"><canvas id="c-radar" role="img" aria-label="Risk profile radar chart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-t">Disease Rate Trend by Age Band</div>
+      <div class="card-d">Line chart of disease rate % per decade alongside patient count. Reveals at which age the risk escalation is sharpest.</div>
+      <div class="leg"><div class="li"><div class="lsq" style="background:var(--red)"></div>Disease Rate %</div><div class="li"><div class="lsq" style="background:var(--blue)"></div>Patient Count</div></div>
+      <div class="cw" style="height:300px"><canvas id="c-trend" role="img" aria-label="Disease rate trend by age band"></canvas></div>
+    </div>
+  </div>
+  <div class="r2">
+    <div class="card">
+      <div class="card-t">Chest Pain Type × Sex Grouped Bars</div>
+      <div class="card-d">Shows how chest pain types are distributed across male and female patients. Identifies gendered patterns in symptom presentation and clinical diagnosis.</div>
+      <div class="leg"><div class="li"><div class="lsq" style="background:var(--blue)"></div>Male</div><div class="li"><div class="lsq" style="background:var(--pink)"></div>Female</div></div>
+      <div class="cw" style="height:260px"><canvas id="c-cpsex" role="img" aria-label="CP type sex breakdown grouped bar chart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="card-t">Polar Area — Outcome × Sex Segments</div>
+      <div class="card-d">Polar area chart of disease/healthy split by sex. Gives population-level overview of four major subgroups simultaneously.</div>
+      <div class="cw" style="height:260px"><canvas id="c-polar" role="img" aria-label="Disease outcome sex polar area chart"></canvas></div>
+      <div id="polar-leg" class="leg" style="margin-top:11px;flex-wrap:wrap"></div>
+    </div>
+  </div>
+  <div class="card rf">
+    <div class="card-t">Cholesterol × BP Disease Heatmap (4×4 Grid)</div>
+    <div class="card-d">Intersection heatmap of cholesterol bins (columns) vs BP bands (rows). Cell color intensity = disease+ count. Darkest cells = highest-risk multi-factor intersection. Percentages show disease rate within each cell.</div>
+    <div id="hm-wrap" style="margin-top:8px"></div>
+  </div>
+</div>
+
+<!-- ══ TAB: RISK PREDICTOR ══ -->
+<div id="tab-pred" style="display:none">
+  <div style="margin-bottom:17px">
+    <div style="font-family:var(--serif);font-size:18px;font-weight:600;margin-bottom:5px">Individual Risk Score Predictor</div>
+    <p style="font-size:12px;color:var(--muted)">Enter patient values to compute a statistical risk score based on patterns in your loaded dataset. Not a clinical diagnostic tool — for analytical and educational exploration only.</p>
+  </div>
+  <div class="pred-grid">
+    <div class="pform">
+      <h3>Patient Parameters</h3>
+      <p>Enter the clinical variables below and click Compute.</p>
+      <div class="frow"><label>Age (years)</label><input type="number" id="p-age" min="20" max="100" value="55"></div>
+      <div class="frow"><label>Sex</label><select id="p-sex"><option value="1">Male (1)</option><option value="0">Female (0)</option></select></div>
+      <div class="frow"><label>Chest Pain Type (cp)</label>
+        <select id="p-cp">
+          <option value="0">Type 0 — Typical Angina</option>
+          <option value="1">Type 1 — Atypical Angina</option>
+          <option value="2">Type 2 — Non-anginal Pain</option>
+          <option value="3">Type 3 — Asymptomatic</option>
+        </select>
+      </div>
+      <div class="frow"><label>Resting Blood Pressure (mmHg)</label><input type="number" id="p-bp" min="80" max="220" value="130"></div>
+      <div class="frow"><label>Serum Cholesterol (mg/dL)</label><input type="number" id="p-chol" min="100" max="600" value="240"></div>
+      <button class="pbtn" onclick="runPred()">Compute Risk Score</button>
+    </div>
+    <div class="pres" id="pres">
+      <div style="color:var(--muted);font-size:13px;max-width:200px">
+        <div style="font-size:38px;margin-bottom:10px">🫀</div>
+        Fill in patient parameters and click <strong style="color:var(--text)">Compute Risk Score</strong> to see results.
+      </div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-t">Dataset Reference Benchmarks</div>
+    <div class="card-d">Statistical means from your loaded dataset by outcome group. Used as baseline for the risk score computation.</div>
+    <table class="stat-t"><thead><tr><th>Variable</th><th>All Patients</th><th>Disease+ Cohort</th><th>Disease− Cohort</th><th>Difference</th></tr></thead><tbody id="ref-tbody"></tbody></table>
+  </div>
+</div>
+
+<!-- ══ TAB: CORRELATION ══ -->
+<div id="tab-corr" style="display:none">
+  <div class="r2">
+    <div class="card">
+      <div class="card-t">Pearson Correlation Matrix</div>
+      <div class="card-d">Correlation coefficients between all 6 numeric variables. Red = positive, Blue = negative. Intensity = strength. Target correlations show which variables predict disease.</div>
+      <div class="corr-wrap" id="corr-matrix"></div>
+    </div>
+    <div class="card">
+      <div class="card-t">Descriptive Statistics</div>
+      <div class="card-d">Min, Max, Mean, Median, Standard Deviation for each variable in the filtered dataset.</div>
+      <table class="stat-t"><thead><tr><th>Variable</th><th>Min</th><th>Max</th><th>Mean</th><th>Median</th><th>Std Dev</th></tr></thead><tbody id="desc-tbody"></tbody></table>
+    </div>
+  </div>
+  <div class="ab">
+    <h2>Deep Clinical Analysis</h2>
+    <p>Automated statistical insights computed from your filtered dataset across all key clinical variables.</p>
+    <div class="agrid">
+      <div class="ac">
+        <h4><span class="aci" style="background:var(--red-bg);color:var(--red)">♥</span>Risk Factor Summary</h4>
+        <ul>
+          <li>Age gap (D+ vs D−) <span id="a-ag">—</span></li>
+          <li>Chol gap (D+ vs D−) <span id="a-cg">—</span></li>
+          <li>BP gap (D+ vs D−) <span id="a-bg">—</span></li>
+          <li>Male disease rate <span id="a-mr">—</span></li>
+          <li>Female disease rate <span id="a-fr">—</span></li>
+          <li>Highest-risk CP type <span id="a-cp">—</span></li>
+        </ul>
+      </div>
+      <div class="ac">
+        <h4><span class="aci" style="background:var(--blue-bg);color:var(--blue)">📊</span>CP Type Disease Rates</h4>
+        <div id="a-cpbars"></div>
+      </div>
+      <div class="ac">
+        <h4><span class="aci" style="background:var(--green-bg);color:var(--green)">🩺</span>Cohort Comparison</h4>
+        <ul>
+          <li>Mean age (D−) <span id="a-and">—</span></li>
+          <li>Mean age (D+) <span id="a-ad">—</span></li>
+          <li>Mean chol (D−) <span id="a-cnd">—</span></li>
+          <li>Mean chol (D+) <span id="a-cd">—</span></li>
+          <li>Mean BP (D−) <span id="a-bnd">—</span></li>
+          <li>Mean BP (D+) <span id="a-bd">—</span></li>
+        </ul>
+      </div>
+      <div class="ac">
+        <h4><span class="aci" style="background:var(--amber-bg);color:var(--amber)">⚡</span>Key Observations</h4>
+        <ul style="list-style:none;padding:0">
+          <li id="ob1" style="font-size:12px;color:var(--muted);padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05)">—</li>
+          <li id="ob2" style="font-size:12px;color:var(--muted);padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05)">—</li>
+          <li id="ob3" style="font-size:12px;color:var(--muted);padding:6px 0;border-bottom:1px solid rgba(255,255,255,0.05)">—</li>
+          <li id="ob4" style="font-size:12px;color:var(--muted);padding:6px 0">—</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ TAB: DATA ══ -->
+<div id="tab-data" style="display:none">
+  <div class="controls" style="margin-bottom:14px">
+    <span class="clbl">Show</span>
+    <button class="chip active" onclick="setFilter('all',this);renderTable()">All</button>
+    <button class="chip" onclick="setFilter('dis',this);renderTable()">Disease+</button>
+    <button class="chip" onclick="setFilter('nd',this);renderTable()">Healthy</button>
+    <div class="spacer"></div>
+    <input class="sbox" type="text" id="tsrch" placeholder="Search age, cp, sex…" oninput="tSearch(this.value)">
+  </div>
+  <div class="tcard">
+    <div class="thead2"><div><h3>Patient Records</h3><p id="t-cnt">— records</p></div></div>
+    <div class="twrap">
+      <table>
+        <thead><tr>
+          <th>#</th>
+          <th class="sort" onclick="sortT('age')">Age ↕</th>
+          <th class="sort" onclick="sortT('sex')">Sex ↕</th>
+          <th class="sort" onclick="sortT('cp')">CP Type ↕</th>
+          <th class="sort" onclick="sortT('trestbps')">BP (mmHg) ↕</th>
+          <th class="sort" onclick="sortT('chol')">Chol (mg/dL) ↕</th>
+          <th class="sort" onclick="sortT('target')">Outcome ↕</th>
+        </tr></thead>
+        <tbody id="t-body"></tbody>
+      </table>
+    </div>
+    <div class="tpag">
+      <span id="t-info">Page 1 of 1</span>
+      <div class="tpbts">
+        <button class="tpb" id="btn-prev" onclick="changePg(-1)" disabled>← Prev</button>
+        <button class="tpb" id="btn-next" onclick="changePg(1)">Next →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /dash -->
+
+<div class="footer">
+  <span>CardioAnalytics — All data processed locally. No information is sent to any server.</span>
+  <span id="foot-ct">0 records loaded</span>
+</div>
+
+<script>
+// ═══════════ STATE ═══════════
+let allData=[],filtered=[],charts={},tPage=1,tPS=20,sKey='',sDir=1,tSrch='';
+const CP={0:'Typical Angina',1:'Atypical Angina',2:'Non-anginal Pain',3:'Asymptomatic'};
+const CPS=['CP-0','CP-1','CP-2','CP-3'];
+
+// ═══════════ TABS ═══════════
+function showTab(id,el){
+  ['overview','adv','pred','corr','data'].forEach(t=>{const e=document.getElementById('tab-'+t);if(e)e.style.display='none';});
+  document.getElementById('tab-'+id).style.display='block';
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  if(id==='adv')renderAdv();
+  if(id==='corr')renderCorr();
+  if(id==='data')renderTable();
+}
+
+// ═══════════ FILE UPLOAD ═══════════
+document.getElementById('fileInput').addEventListener('change',function(e){
+  const f=e.target.files[0];if(!f)return;
+  const rd=new FileReader();
+  rd.onload=ev=>{try{let r;if(f.name.toLowerCase().endsWith('.csv'))r=parseCSV(ev.target.result);else{const wb=XLSX.read(ev.target.result,{type:'binary'});r=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);}processData(r);}catch(err){alert('Error: '+err.message);}};
+  f.name.toLowerCase().endsWith('.csv')?rd.readAsText(f):rd.readAsBinaryString(f);
+});
+const dz=document.getElementById('dropZone');
+dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('drag');});
+dz.addEventListener('dragleave',()=>dz.classList.remove('drag'));
+dz.addEventListener('drop',e=>{e.preventDefault();dz.classList.remove('drag');const f=e.dataTransfer.files[0];if(f){document.getElementById('fileInput').files=e.dataTransfer.files;document.getElementById('fileInput').dispatchEvent(new Event('change'));}});
+
+function parseCSV(txt){
+  const ln=txt.trim().split('\n');
+  const hd=ln[0].split(',').map(h=>h.trim().replace(/['"]/g,'').toLowerCase());
+  return ln.slice(1).map(l=>{const v=l.split(',');const o={};hd.forEach((h,i)=>o[h]=(v[i]||'').trim().replace(/['"]/g,''));return o;}).filter(r=>r.age);
+}
+function norm(r){
+  const k=Object.fromEntries(Object.entries(r).map(([a,b])=>[a.toLowerCase().trim(),b]));
+  return{age:+k.age||0,sex:+k.sex||0,cp:+k.cp||0,trestbps:+k.trestbps||0,chol:+k.chol||0,target:+k.target||0};
+}
+
+// ═══════════ SAMPLE DATA ═══════════
+function loadSample(){
+  const s=[];
+  for(let i=0;i<303;i++){
+    const sex=Math.random()>0.32?1:0;
+    const age=Math.round(30+Math.random()*43+(sex?2:-2));
+    const target=Math.random()>(sex?0.43:0.27)?1:0;
+    const cp=target?(Math.random()<0.35?0:Math.random()<0.4?2:Math.random()<0.5?1:3):(Math.random()<0.2?0:Math.random()<0.45?1:Math.random()<0.5?2:3);
+    const trestbps=Math.round(92+Math.random()*84+(target?9:0));
+    const chol=Math.round(138+Math.random()*225+(target?18:-3));
+    s.push({age,sex,cp,trestbps,chol,target});
+  }
+  processData(s);
+}
+
+// ═══════════ PROCESS ═══════════
+function processData(raw){
+  allData=raw.map(norm).filter(r=>r.age>0&&r.chol>0);
+  filtered=[...allData];
+  document.getElementById('upSec').style.display='none';
+  document.getElementById('mainDash').classList.add('v');
+  document.getElementById('hdr-st').textContent=allData.length+' patients loaded';
+  document.getElementById('foot-ct').textContent=allData.length+' records loaded';
+  renderAll();
+}
+
+// ═══════════ FILTER ═══════════
+function setFilter(f,btn){
+  document.querySelectorAll('.chip').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  if(f==='all')filtered=[...allData];
+  else if(f==='dis')filtered=allData.filter(r=>r.target==1);
+  else if(f==='nd')filtered=allData.filter(r=>r.target==0);
+  else if(f==='male')filtered=allData.filter(r=>r.sex==1);
+  else if(f==='female')filtered=allData.filter(r=>r.sex==0);
+  else if(f==='age60')filtered=allData.filter(r=>r.age>=60);
+  else if(f==='hichol')filtered=allData.filter(r=>r.chol>=240);
+  else if(f==='hibp')filtered=allData.filter(r=>r.trestbps>=140);
+  renderAll();
+}
+
+// ═══════════ MATH ═══════════
+const avg=a=>a.length?a.reduce((s,v)=>s+v,0)/a.length:0;
+const std=a=>{if(a.length<2)return 0;const m=avg(a);return Math.sqrt(a.reduce((s,v)=>s+(v-m)**2,0)/a.length);};
+const mdn=a=>{if(!a.length)return 0;const s=[...a].sort((x,y)=>x-y);const m=Math.floor(s.length/2);return s.length%2?s[m]:(s[m-1]+s[m])/2;};
+const pearson=(a,b)=>{const ma=avg(a),mb=avg(b);const num=a.reduce((s,v,i)=>s+(v-ma)*(b[i]-mb),0);const den=Math.sqrt(a.reduce((s,v)=>s+(v-ma)**2,0)*b.reduce((s,v)=>s+(v-mb)**2,0));return den?num/den:0;};
+
+// ═══════════ RENDER ALL ═══════════
+function renderAll(){
+  updateKPIs();
+  renderAge();renderCP();renderSex();renderBP();renderChol();renderScatter();
+  renderInsights();renderDeep();renderRefTable();
+}
+
+// ═══════════ KPIs ═══════════
+function updateKPIs(){
+  const d=filtered,dis=d.filter(r=>r.target==1);
+  const m=d.filter(r=>r.sex==1).length,f=d.filter(r=>r.sex==0).length;
+  document.getElementById('k0').textContent=d.length;
+  document.getElementById('k1').textContent=d.length?(((dis.length/d.length)*100).toFixed(1)+'%'):'—';
+  document.getElementById('k2').textContent=avg(d.map(r=>r.age)).toFixed(1);
+  document.getElementById('k3').textContent=Math.round(avg(d.map(r=>r.chol)));
+  document.getElementById('k4').textContent=Math.round(avg(d.map(r=>r.trestbps)));
+  document.getElementById('k5').textContent=m+' / '+f;
+}
+
+// ═══════════ CHART UTILS ═══════════
+function dc(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+function ageBins(data){const b=[0,0,0,0,0];data.forEach(r=>{const a=r.age;if(a<40)b[0]++;else if(a<50)b[1]++;else if(a<60)b[2]++;else if(a<70)b[3]++;else b[4]++;});return b;}
+const tickC='#6b7fa8',gridC='rgba(255,255,255,0.05)';
+
+// ═══════════ CHART 1: AGE ═══════════
+function renderAge(){
+  dc('age');
+  const d1=filtered.filter(r=>r.target==1),d0=filtered.filter(r=>r.target==0);
+  charts['age']=new Chart(document.getElementById('c-age'),{type:'bar',
+    data:{labels:['<40','40–49','50–59','60–69','70+'],datasets:[
+      {label:'Disease+',data:ageBins(d1),backgroundColor:'rgba(240,92,92,0.8)',borderRadius:6},
+      {label:'Healthy',data:ageBins(d0),backgroundColor:'rgba(62,207,142,0.72)',borderRadius:6}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:gridC},ticks:{color:tickC}},y:{grid:{color:gridC},ticks:{color:tickC}}}}});
+}
+
+// ═══════════ CHART 2: CP ═══════════
+function renderCP(){
+  dc('cp');
+  const cpD=[0,1,2,3].map(c=>filtered.filter(r=>r.cp==c&&r.target==1).length);
+  const cpN=[0,1,2,3].map(c=>filtered.filter(r=>r.cp==c&&r.target==0).length);
+  charts['cp']=new Chart(document.getElementById('c-cp'),{type:'bar',
+    data:{labels:CPS,datasets:[
+      {label:'Disease+',data:cpD,backgroundColor:'rgba(240,92,92,0.8)',borderRadius:5},
+      {label:'Disease−',data:cpN,backgroundColor:'rgba(77,158,246,0.75)',borderRadius:5}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:gridC},ticks:{color:tickC}},y:{grid:{color:gridC},ticks:{color:tickC}}}}});
+}
+
+// ═══════════ CHART 3: SEX ═══════════
+function renderSex(){
+  dc('sex');
+  const md=filtered.filter(r=>r.sex==1&&r.target==1).length,mn=filtered.filter(r=>r.sex==1&&r.target==0).length;
+  const fd=filtered.filter(r=>r.sex==0&&r.target==1).length,fn=filtered.filter(r=>r.sex==0&&r.target==0).length;
+  charts['sex']=new Chart(document.getElementById('c-sex'),{type:'doughnut',
+    data:{labels:['Male+Disease','Male+Healthy','Female+Disease','Female+Healthy'],
+      datasets:[{data:[md,mn,fd,fn],backgroundColor:['#f05c5c','#4d9ef6','#f472b6','#3ecf8e'],borderWidth:0,hoverOffset:8}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{display:false}}}});
+  const mt=md+mn,ft=fd+fn;
+  document.getElementById('sex-st').innerHTML=
+    `Male: <b style="color:#4d9ef6">${mt}</b> — Disease rate: <b style="color:#f05c5c">${mt?(((md/mt)*100).toFixed(1)+'%'):'N/A'}</b><br>`+
+    `Female: <b style="color:#f472b6">${ft}</b> — Disease rate: <b style="color:#f05c5c">${ft?(((fd/ft)*100).toFixed(1)+'%'):'N/A'}</b>`;
+}
+
+// ═══════════ CHART 4: BP ═══════════
+function renderBP(){
+  dc('bp');
+  const bands=[[0,120],[120,130],[130,140],[140,999]],labs=['Normal','Elevated','Stage 1','Stage 2'];
+  const cnt=bands.map(([lo,hi])=>filtered.filter(r=>r.trestbps>=lo&&r.trestbps<hi).length);
+  const rate=bands.map(([lo,hi])=>{const t=filtered.filter(r=>r.trestbps>=lo&&r.trestbps<hi);return t.length?Math.round((t.filter(r=>r.target==1).length/t.length)*100):0;});
+  charts['bp']=new Chart(document.getElementById('c-bp'),{type:'bar',
+    data:{labels:labs,datasets:[
+      {label:'Count',data:cnt,backgroundColor:['rgba(62,207,142,0.75)','rgba(245,166,35,0.75)','rgba(240,130,92,0.75)','rgba(240,92,92,0.85)'],borderRadius:6,yAxisID:'y'},
+      {label:'Disease%',data:rate,type:'line',borderColor:'rgba(255,255,255,0.65)',backgroundColor:'rgba(255,255,255,0.08)',tension:0.4,pointRadius:5,pointBackgroundColor:'#fff',yAxisID:'y2'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:gridC},ticks:{color:tickC}},y:{grid:{color:gridC},ticks:{color:tickC}},
+        y2:{position:'right',grid:{display:false},ticks:{color:tickC,callback:v=>v+'%'}}}}});
+}
+
+// ═══════════ CHART 5: CHOL ═══════════
+function renderChol(){
+  dc('chol');
+  const bins=[[0,200],[200,220],[220,240],[240,260],[260,9999]],labs=['<200','200–220','220–240','240–260','>260'];
+  const dB=bins.map(([lo,hi])=>filtered.filter(r=>r.chol>=lo&&r.chol<hi&&r.target==1).length);
+  const nB=bins.map(([lo,hi])=>filtered.filter(r=>r.chol>=lo&&r.chol<hi&&r.target==0).length);
+  charts['chol']=new Chart(document.getElementById('c-chol'),{type:'bar',
+    data:{labels:labs,datasets:[
+      {label:'Disease+',data:dB,backgroundColor:'rgba(240,92,92,0.82)',borderRadius:4},
+      {label:'Disease−',data:nB,backgroundColor:'rgba(168,85,247,0.72)',borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,indexAxis:'y',plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:gridC},ticks:{color:tickC}},y:{grid:{color:gridC},ticks:{color:tickC}}}}});
+}
+
+// ═══════════ BUBBLE SCATTER ═══════════
+function renderScatter(){
+  dc('scatter');
+  const dP=filtered.filter(r=>r.target==1).map(r=>({x:r.age,y:r.chol,r:Math.max(3,Math.min(14,(r.trestbps-80)/9))}));
+  const dN=filtered.filter(r=>r.target==0).map(r=>({x:r.age,y:r.chol,r:Math.max(3,Math.min(14,(r.trestbps-80)/9))}));
+  charts['scatter']=new Chart(document.getElementById('c-scatter'),{type:'bubble',
+    data:{datasets:[
+      {label:'Disease+',data:dP,backgroundColor:'rgba(240,92,92,0.45)',borderColor:'rgba(240,92,92,0.7)',borderWidth:1},
+      {label:'Healthy',data:dN,backgroundColor:'rgba(62,207,142,0.38)',borderColor:'rgba(62,207,142,0.65)',borderWidth:1}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},
+      tooltip:{callbacks:{label:ctx=>`Age:${ctx.raw.x}  Chol:${ctx.raw.y}  BP≈${Math.round(ctx.raw.r*9+80)}`}}},
+      layout:{padding:16},
+      scales:{x:{title:{display:true,text:'Age (years)',color:tickC},grid:{color:gridC},ticks:{color:tickC},min:18,max:84},
+        y:{title:{display:true,text:'Cholesterol (mg/dL)',color:tickC},grid:{color:gridC},ticks:{color:tickC},min:80,max:640}}}});
+}
+
+// ═══════════ INSIGHTS ═══════════
+function renderInsights(){
+  const d=filtered,dis=d.filter(r=>r.target==1),nd=d.filter(r=>r.target==0);
+  if(!d.length)return;
+  const ageDiff=(avg(dis.map(r=>r.age))-avg(nd.map(r=>r.age))).toFixed(1);
+  const cholDiff=(avg(dis.map(r=>r.chol))-avg(nd.map(r=>r.chol))).toFixed(1);
+  const bpDiff=(avg(dis.map(r=>r.trestbps))-avg(nd.map(r=>r.trestbps))).toFixed(1);
+  const hCP=[0,1,2,3].reduce((b,c)=>{const t=d.filter(r=>r.cp==c);const rate=t.length?t.filter(r=>r.target==1).length/t.length:0;return rate>b.rate?{c,rate}:b;},{c:-1,rate:0});
+  document.getElementById('ins-age').textContent=`Disease+ patients are on average ${Math.abs(ageDiff)} years ${ageDiff>0?'older':'younger'} than healthy patients (${avg(dis.map(r=>r.age)).toFixed(1)} vs ${avg(nd.map(r=>r.age)).toFixed(1)} yrs). Age is a primary non-modifiable cardiac risk factor.`;
+  document.getElementById('ins-chol').textContent=`Mean cholesterol is ${Math.abs(cholDiff)} mg/dL ${cholDiff>0?'higher':'lower'} in the disease+ cohort (${Math.round(avg(dis.map(r=>r.chol)))} vs ${Math.round(avg(nd.map(r=>r.chol)))} mg/dL). LDL control is a key intervention target.`;
+  document.getElementById('ins-bp').textContent=`Resting BP is ${Math.abs(bpDiff)} mmHg ${bpDiff>0?'elevated':'lower'} in disease+ patients. ${d.filter(r=>r.trestbps>=140&&r.target==1).length} Stage 2 hypertension patients have confirmed disease (${d.length?((d.filter(r=>r.trestbps>=140&&r.target==1).length/d.length)*100).toFixed(1):0}% of total cohort).`;
+  document.getElementById('ins-cp').textContent=`CP type ${hCP.c>=0?hCP.c:'N/A'} has the highest disease rate at ${hCP.rate?(hCP.rate*100).toFixed(1):0}%. Asymptomatic chest pain (cp=3) is paradoxically high-risk — patients with no pain often have the most severe underlying disease.`;
+}
+
+// ═══════════ DEEP ANALYSIS ═══════════
+function renderDeep(){
+  const d=filtered,dis=d.filter(r=>r.target==1),nd=d.filter(r=>r.target==0);
+  if(!d.length)return;
+  const ageDiff=(avg(dis.map(r=>r.age))-avg(nd.map(r=>r.age))).toFixed(1);
+  const cholDiff=(avg(dis.map(r=>r.chol))-avg(nd.map(r=>r.chol))).toFixed(1);
+  const bpDiff=(avg(dis.map(r=>r.trestbps))-avg(nd.map(r=>r.trestbps))).toFixed(1);
+  const males=d.filter(r=>r.sex==1),females=d.filter(r=>r.sex==0);
+  const hCP=[0,1,2,3].reduce((b,c)=>{const t=d.filter(r=>r.cp==c);const rate=t.length?t.filter(r=>r.target==1).length/t.length:0;return rate>b.rate?{c,rate}:b;},{c:-1,rate:0});
+  const prev=d.length?((dis.length/d.length)*100).toFixed(1):0;
+  const s=id=>document.getElementById(id);
+  s('a-ag').textContent=Math.abs(ageDiff)+' yrs';s('a-cg').textContent=Math.abs(cholDiff)+' mg/dL';s('a-bg').textContent=Math.abs(bpDiff)+' mmHg';
+  s('a-mr').textContent=males.length?(((males.filter(r=>r.target==1).length/males.length)*100).toFixed(1)+'%'):'N/A';
+  s('a-fr').textContent=females.length?(((females.filter(r=>r.target==1).length/females.length)*100).toFixed(1)+'%'):'N/A';
+  s('a-cp').textContent=hCP.c>=0?`CP-${hCP.c} (${(hCP.rate*100).toFixed(1)})%`:'N/A';
+  s('a-and').textContent=avg(nd.map(r=>r.age)).toFixed(1)+' yrs';s('a-ad').textContent=avg(dis.map(r=>r.age)).toFixed(1)+' yrs';
+  s('a-cnd').textContent=Math.round(avg(nd.map(r=>r.chol)))+' mg/dL';s('a-cd').textContent=Math.round(avg(dis.map(r=>r.chol)))+' mg/dL';
+  s('a-bnd').textContent=Math.round(avg(nd.map(r=>r.trestbps)))+' mmHg';s('a-bd').textContent=Math.round(avg(dis.map(r=>r.trestbps)))+' mmHg';
+  const cpB=document.getElementById('a-cpbars');cpB.innerHTML='';
+  [0,1,2,3].forEach(c=>{const t=d.filter(r=>r.cp==c),cnt=t.filter(r=>r.target==1).length,pct=t.length?Math.round((cnt/t.length)*100):0,col=pct>60?'#f05c5c':pct>40?'#f5a623':'#3ecf8e';
+    cpB.innerHTML+=`<div class="rbr"><span class="rbl">CP-${c}</span><div class="rbt"><div class="rbf" style="width:${pct}%;background:${col}"></div></div><span class="rbv">${pct}%</span></div>`;});
+  s('ob1').textContent=`Disease prevalence in filtered cohort: ${prev}% (${dis.length} of ${d.length} patients).`;
+  s('ob2').textContent=`Disease+ patients are ${Math.abs(ageDiff)} yrs ${ageDiff>0?'older':'younger'} on average — age is the strongest univariate predictor.`;
+  s('ob3').textContent=`Cholesterol delta: disease+ cohort is ${Math.abs(cholDiff)} mg/dL ${cholDiff>0?'higher':'lower'} — a clinically relevant lipid-risk signal.`;
+  s('ob4').textContent=hCP.c>=0?`CP-${hCP.c} carries the highest disease rate at ${(hCP.rate*100).toFixed(1)}% — critical triage flag.`:'Insufficient data for CP analysis.';
+}
+
+// ═══════════ ADVANCED CHARTS ═══════════
+function renderAdv(){
+  renderRadar();renderTrend();renderCPSex();renderPolar();renderHeatmap();
+}
+function renderRadar(){
+  dc('radar');
+  const dis=filtered.filter(r=>r.target==1),nd=filtered.filter(r=>r.target==0);
+  const n=(v,mn,mx)=>Math.round(((v-mn)/(mx-mn||1))*100);
+  charts['radar']=new Chart(document.getElementById('c-radar'),{type:'radar',
+    data:{labels:['Age','Cholesterol','Blood Pressure','Male %','Disease %'],datasets:[
+      {label:'Disease+',data:[n(avg(dis.map(r=>r.age)),25,80),n(avg(dis.map(r=>r.chol)),130,580),n(avg(dis.map(r=>r.trestbps)),90,200),Math.round((dis.filter(r=>r.sex==1).length/(dis.length||1))*100),100],backgroundColor:'rgba(240,92,92,0.18)',borderColor:'#f05c5c',pointBackgroundColor:'#f05c5c',pointRadius:4},
+      {label:'Healthy',data:[n(avg(nd.map(r=>r.age)),25,80),n(avg(nd.map(r=>r.chol)),130,580),n(avg(nd.map(r=>r.trestbps)),90,200),Math.round((nd.filter(r=>r.sex==1).length/(nd.length||1))*100),0],backgroundColor:'rgba(77,158,246,0.15)',borderColor:'#4d9ef6',pointBackgroundColor:'#4d9ef6',pointRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{r:{grid:{color:'rgba(255,255,255,0.07)'},ticks:{color:tickC,font:{size:10}},pointLabels:{color:'#8fa0c0',font:{size:11}}}}}});
+}
+function renderTrend(){
+  dc('trend');
+  const bands=[['<40',0,39],['40s',40,49],['50s',50,59],['60s',60,69],['70+',70,99]];
+  const rates=bands.map(([l,lo,hi])=>{const t=filtered.filter(r=>r.age>=lo&&r.age<=hi);return t.length?Math.round((t.filter(r=>r.target==1).length/t.length)*100):0;});
+  const cnt=bands.map(([l,lo,hi])=>filtered.filter(r=>r.age>=lo&&r.age<=hi).length);
+  charts['trend']=new Chart(document.getElementById('c-trend'),{type:'line',
+    data:{labels:bands.map(b=>b[0]),datasets:[
+      {label:'Disease Rate %',data:rates,borderColor:'#f05c5c',backgroundColor:'rgba(240,92,92,0.1)',tension:0.4,fill:true,pointBackgroundColor:'#f05c5c',pointRadius:5,yAxisID:'y'},
+      {label:'Count',data:cnt,borderColor:'#4d9ef6',backgroundColor:'rgba(77,158,246,0.07)',tension:0.4,fill:true,pointBackgroundColor:'#4d9ef6',pointRadius:4,yAxisID:'y2'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:gridC},ticks:{color:tickC}},y:{grid:{color:gridC},ticks:{color:tickC,callback:v=>v+'%'}},y2:{position:'right',grid:{display:false},ticks:{color:tickC}}}}});
+}
+function renderCPSex(){
+  dc('cpsex');
+  charts['cpsex']=new Chart(document.getElementById('c-cpsex'),{type:'bar',
+    data:{labels:CPS,datasets:[
+      {label:'Male',data:[0,1,2,3].map(c=>filtered.filter(r=>r.cp==c&&r.sex==1).length),backgroundColor:'rgba(77,158,246,0.8)',borderRadius:5},
+      {label:'Female',data:[0,1,2,3].map(c=>filtered.filter(r=>r.cp==c&&r.sex==0).length),backgroundColor:'rgba(244,114,182,0.78)',borderRadius:5}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{grid:{color:gridC},ticks:{color:tickC}},y:{grid:{color:gridC},ticks:{color:tickC}}}}});
+}
+function renderPolar(){
+  dc('polar');
+  const md=filtered.filter(r=>r.sex==1&&r.target==1).length,mn=filtered.filter(r=>r.sex==1&&r.target==0).length;
+  const fd=filtered.filter(r=>r.sex==0&&r.target==1).length,fn=filtered.filter(r=>r.sex==0&&r.target==0).length;
+  charts['polar']=new Chart(document.getElementById('c-polar'),{type:'polarArea',
+    data:{labels:['Male+Disease','Male+Healthy','Female+Disease','Female+Healthy'],
+      datasets:[{data:[md,mn,fd,fn],backgroundColor:['rgba(240,92,92,0.72)','rgba(77,158,246,0.68)','rgba(244,114,182,0.68)','rgba(62,207,142,0.68)'],borderWidth:0}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{r:{grid:{color:'rgba(255,255,255,0.06)'},ticks:{color:tickC,font:{size:10}}}}}});
+  const ls=[['#f05c5c','Male+Disease'],['#4d9ef6','Male+Healthy'],['#f472b6','Female+Disease'],['#3ecf8e','Female+Healthy']];
+  document.getElementById('polar-leg').innerHTML=ls.map(([c,l])=>`<div class="li"><div class="lci" style="background:${c}"></div>${l}</div>`).join('');
+}
+function renderHeatmap(){
+  const cBins=[[0,199,'<200'],[200,219,'200–219'],[220,239,'220–239'],[240,9999,'≥240']];
+  const bBins=[[0,119,'Normal <120'],[120,129,'Elevated 120–129'],[130,139,'Stage 1 130–139'],[140,9999,'Stage 2 ≥140']];
+  const maxV=Math.max(...bBins.map(([blo,bhi])=>cBins.map(([clo,chi])=>filtered.filter(r=>r.trestbps>=blo&&r.trestbps<=bhi&&r.chol>=clo&&r.chol<=chi&&r.target==1).length)).flat(),1);
+  let h='<div style="overflow-x:auto"><table style="border-collapse:separate;border-spacing:4px;width:100%;font-size:12px"><thead><tr>';
+  h+='<th style="padding:8px;color:var(--muted);text-align:left;min-width:138px;font-size:11px">BP \\ Chol</th>';
+  cBins.forEach(([,,l])=>{h+=`<th style="padding:8px;color:var(--muted2);text-align:center;font-size:11px">${l}</th>`;});
+  h+='</tr></thead><tbody>';
+  bBins.forEach(([blo,bhi,bl])=>{
+    h+=`<tr><td style="padding:9px 12px;color:var(--muted2);font-weight:500;font-size:11px">${bl}</td>`;
+    cBins.forEach(([clo,chi])=>{
+      const total=filtered.filter(r=>r.trestbps>=blo&&r.trestbps<=bhi&&r.chol>=clo&&r.chol<=chi);
+      const cnt=total.filter(r=>r.target==1).length;
+      const pct=total.length?Math.round((cnt/total.length)*100):0;
+      const alpha=(cnt/maxV*0.8+0.06).toFixed(2);
+      h+=`<td style="padding:11px 8px;text-align:center;background:rgba(240,92,92,${alpha});border-radius:6px;color:#e8eeff;font-weight:700;min-width:70px">${cnt}<br><span style="font-size:10px;font-weight:400;opacity:.75">${pct}% rate</span></td>`;
+    });
+    h+='</tr>';
+  });
+  h+='</tbody></table></div>';
+  h+='<p style="font-size:11px;color:var(--muted);margin-top:10px">Cell value = disease+ count. Rate = disease% within that bin intersection. Darker red = higher disease burden.</p>';
+  document.getElementById('hm-wrap').innerHTML=h;
+}
+
+// ═══════════ CORRELATION TAB ═══════════
+function renderCorr(){
+  const vars=['age','sex','cp','trestbps','chol','target'],labs=['Age','Sex','CP','BP','Chol','Target'];
+  const arrays=vars.map(v=>filtered.map(r=>r[v]));
+  let h='<div class="corr-g" style="grid-template-columns:auto repeat(6,1fr)">';
+  h+='<div class="chdr"></div>';labs.forEach(l=>h+=`<div class="chdr">${l}</div>`);
+  vars.forEach((v,i)=>{
+    h+=`<div class="crow">${labs[i]}</div>`;
+    vars.forEach((w,j)=>{
+      const r=pearson(arrays[i],arrays[j]),ab=Math.abs(r);
+      const bg=i===j?'rgba(255,255,255,0.05)':r>0?`rgba(240,92,92,${(ab*0.75+0.05).toFixed(2)})`:`rgba(77,158,246,${(ab*0.75+0.05).toFixed(2)})`;
+      h+=`<div class="ccell" style="background:${bg};color:${ab>0.25?'#e8eeff':'#6b7fa8'}">${r.toFixed(2)}</div>`;
+    });
+  });
+  h+='</div><p style="font-size:11px;color:var(--muted);margin-top:10px">Red = positive correlation, Blue = negative. Intensity = strength. Last row/column shows correlation with target (disease outcome).</p>';
+  document.getElementById('corr-matrix').innerHTML=h;
+  const tb=document.getElementById('desc-tbody');tb.innerHTML='';
+  vars.forEach((v,i)=>{
+    const a=filtered.map(r=>r[v]).filter(x=>!isNaN(x));
+    const mn=avg(a),md=mdn(a),sd=std(a),mi=Math.min(...a),mx=Math.max(...a);
+    tb.innerHTML+=`<tr><td>${labs[i]}</td><td>${mi.toFixed(1)}</td><td>${mx.toFixed(1)}</td><td>${mn.toFixed(2)}</td><td>${md.toFixed(2)}</td><td>${sd.toFixed(2)}</td></tr>`;
+  });
+  renderDeep();
+}
+
+// ═══════════ REF TABLE ═══════════
+function renderRefTable(){
+  const dis=allData.filter(r=>r.target==1),nd=allData.filter(r=>r.target==0);
+  const tb=document.getElementById('ref-tbody');if(!tb)return;tb.innerHTML='';
+  [['Age (yrs)','age',1],['Cholesterol (mg/dL)','chol',0],['Blood Pressure (mmHg)','trestbps',0]].forEach(([label,key,dec])=>{
+    const all=avg(allData.map(r=>r[key])).toFixed(dec?1:0);
+    const d=avg(dis.map(r=>r[key])).toFixed(dec?1:0);
+    const n=avg(nd.map(r=>r[key])).toFixed(dec?1:0);
+    const diff=(avg(dis.map(r=>r[key]))-avg(nd.map(r=>r[key]))).toFixed(dec?1:0);
+    tb.innerHTML+=`<tr><td>${label}</td><td>${all}</td><td style="color:var(--red)">${d}</td><td style="color:var(--green)">${n}</td><td style="color:${+diff>0?'var(--red)':'var(--green)'};font-weight:600">${+diff>0?'+':''}${diff}</td></tr>`;
+  });
+}
+
+// ═══════════ RISK PREDICTOR ═══════════
+function runPred(){
+  if(!allData.length){alert('Load data first.');return;}
+  const age=+document.getElementById('p-age').value;
+  const sex=+document.getElementById('p-sex').value;
+  const cp=+document.getElementById('p-cp').value;
+  const bp=+document.getElementById('p-bp').value;
+  const chol=+document.getElementById('p-chol').value;
+  const dis=allData.filter(r=>r.target==1),nd=allData.filter(r=>r.target==0);
+  let sc=50;
+  const aD=avg(dis.map(r=>r.age)),aN=avg(nd.map(r=>r.age));sc+=(age-aN)/(aD-aN||1)*22;
+  const cD=avg(dis.map(r=>r.chol)),cN=avg(nd.map(r=>r.chol));sc+=(chol-cN)/(cD-cN||1)*22;
+  const bD=avg(dis.map(r=>r.trestbps)),bN=avg(nd.map(r=>r.trestbps));sc+=(bp-bN)/(bD-bN||1)*18;
+  const mR=allData.filter(r=>r.sex==1).length?allData.filter(r=>r.sex==1&&r.target==1).length/allData.filter(r=>r.sex==1).length:0.5;
+  const fR=allData.filter(r=>r.sex==0).length?allData.filter(r=>r.sex==0&&r.target==1).length/allData.filter(r=>r.sex==0).length:0.5;
+  sc+=sex==1?(mR-0.5)*28:(fR-0.5)*28;
+  const cpT=allData.filter(r=>r.cp==cp);const cpR=cpT.length?cpT.filter(r=>r.target==1).length/cpT.length:0.5;
+  sc+=(cpR-0.5)*36;
+  sc=Math.min(96,Math.max(4,Math.round(sc)));
+  const lvl=sc<30?'Low Risk':sc<55?'Moderate Risk':sc<75?'High Risk':'Very High Risk';
+  const col=sc<30?'#3ecf8e':sc<55?'#f5a623':sc<75?'#f05c5c':'#ff2d55';
+  const factors=[
+    {l:'Age factor',v:`${age} yrs (D+ avg: ${aD.toFixed(1)})`,hi:age>aD},
+    {l:'Cholesterol',v:`${chol} mg/dL (D+ avg: ${cD.toFixed(0)})`,hi:chol>cD},
+    {l:'Blood pressure',v:`${bp} mmHg (D+ avg: ${bD.toFixed(0)})`,hi:bp>bD},
+    {l:`CP-${cp} disease rate`,v:`${(cpR*100).toFixed(1)}% of CP-${cp} patients`,hi:cpR>0.5},
+    {l:'Sex disease rate',v:`${sex==1?'Male':'Female'}: ${((sex==1?mR:fR)*100).toFixed(1)}%`,hi:sex==1?mR>0.5:fR>0.5}
+  ];
+  document.getElementById('pres').innerHTML=`
+    <div style="width:100%;text-align:center">
+      <svg width="200" height="112" viewBox="0 0 200 112" style="display:block;margin:0 auto;overflow:visible">
+        <path d="M18,100 A82,82 0 0,1 182,100" fill="none" stroke="rgba(255,255,255,0.06)" stroke-width="15" stroke-linecap="round"/>
+        <path d="M18,100 A82,82 0 0,1 182,100" fill="none" stroke="${col}" stroke-width="15" stroke-linecap="round" stroke-dasharray="${Math.round((sc/100)*257.5)} 257.5"/>
+        <text x="100" y="92" text-anchor="middle" font-size="33" font-weight="700" fill="${col}" font-family="Syne,sans-serif">${sc}</text>
+        <text x="100" y="108" text-anchor="middle" font-size="11" fill="#6b7fa8">/ 100</text>
+      </svg>
+      <div style="font-size:20px;font-weight:700;color:${col};margin:6px 0 4px">${lvl}</div>
+      <div style="font-size:12px;color:var(--muted);max-width:220px;margin:0 auto">Score based on ${allData.length} patients in your dataset.</div>
+      <div class="rfl">
+        ${factors.map(f=>`<div class="rfi"><div class="rfd" style="background:${f.hi?'#f05c5c':'#3ecf8e'}"></div><span style="flex:1">${f.l}</span><span style="color:var(--text)">${f.v}</span></div>`).join('')}
+      </div>
+      <p style="font-size:11px;color:var(--muted);margin-top:13px;font-style:italic">⚠ Not a clinical tool. For research only.</p>
+    </div>`;
+}
+
+// ═══════════ DATA TABLE ═══════════
+function tSearch(v){tSrch=v.toLowerCase();tPage=1;renderTable();}
+function sortT(k){if(sKey===k)sDir*=-1;else{sKey=k;sDir=1;}tPage=1;renderTable();}
+function changePg(d){tPage+=d;renderTable();}
+function renderTable(){
+  let data=[...filtered];
+  if(tSrch)data=data.filter(r=>String(r.age).includes(tSrch)||String(r.cp).includes(tSrch)||String(r.sex).includes(tSrch)||String(r.target).includes(tSrch));
+  if(sKey)data.sort((a,b)=>(a[sKey]-b[sKey])*sDir);
+  const pages=Math.ceil(data.length/tPS)||1;
+  tPage=Math.min(tPage,pages);
+  const sl=data.slice((tPage-1)*tPS,tPage*tPS);
+  document.getElementById('t-cnt').textContent=`${data.length} records`;
+  document.getElementById('t-info').textContent=`Page ${tPage} of ${pages}`;
+  document.getElementById('btn-prev').disabled=tPage===1;
+  document.getElementById('btn-next').disabled=tPage===pages;
+  document.getElementById('t-body').innerHTML=sl.map((r,i)=>`<tr>
+    <td style="color:var(--muted)">${(tPage-1)*tPS+i+1}</td>
+    <td>${r.age}</td>
+    <td><span class="badge ${r.sex==1?'m':'f'}">${r.sex==1?'Male':'Female'}</span></td>
+    <td>${CP[r.cp]||'Type '+r.cp}</td>
+    <td>${r.trestbps}</td>
+    <td>${r.chol}</td>
+    <td><span class="badge ${r.target==1?'pos':'neg'}">${r.target==1?'Disease+':'Healthy'}</span></td>
+  </tr>`).join('');
+}
+
+// ═══════════ EXPORT ═══════════
+function exportCSV(){
+  if(!allData.length){alert('No data loaded.');return;}
+  const h=['age','sex','cp','trestbps','chol','target'];
+  const rows=[h.join(','),...allData.map(r=>h.map(k=>r[k]).join(','))];
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([rows.join('\n')],{type:'text/csv'}));a.download='heart_disease_data.csv';a.click();
+}
+</script>
+</body>
+</html>
